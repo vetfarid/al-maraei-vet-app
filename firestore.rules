@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /requests/{id} {
+      // أي عميل يقدر يبعت طلب جديد فقط (حقول محددة وحجم محدود)
+      allow create: if request.resource.data.keys().hasOnly(['name','phone','animalType','animalName','type','date','time','address','details','status','createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() < 100
+        && request.resource.data.phone is string && request.resource.data.phone.size() < 20
+        && request.resource.data.details is string && request.resource.data.details.size() < 1500
+        && request.resource.data.status == 'جديد';
+      // القراءة والتعديل والحذف للدكتور فقط (غيّر الإيميل بإيميلك)
+      allow read, update, delete: if request.auth != null && request.auth.token.email == 'PUT_DOCTOR_EMAIL_HERE';
+    }
+  }
+}
