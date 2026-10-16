@@ -1,7 +1,7 @@
-// الصق هنا إعدادات Firebase (Project settings > Your apps > Web app)
 export const firebaseConfig = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE_PROJECT.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyCsAskzEHGnTEwL-Og4YGJlU9oWVG29cl4",
+  authDomain: "al-maraei-vet-app.firebaseapp.com",
+  projectId: "al-maraei-vet-app",
+  databaseId: "maraei-db",
+  appId: "1:867509909922:web:eb4cfdfcd80c84cb319afb"
 };
