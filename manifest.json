@@ -10,16 +10,63 @@
  "theme_color": "#176b57",
  "icons": [
   {
-   "src": "icon-192.png",
+   "src": "admin-192.png",
    "sizes": "192x192",
    "type": "image/png",
-   "purpose": "any maskable"
+   "purpose": "any"
   },
   {
-   "src": "icon-512.png",
+   "src": "admin-512.png",
    "sizes": "512x512",
    "type": "image/png",
-   "purpose": "any maskable"
+   "purpose": "any"
+  },
+  {
+   "src": "admin-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "id": "./index.html",
+ "orientation": "portrait",
+ "categories": [
+  "medical",
+  "business"
+ ],
+ "shortcuts": [
+  {
+   "name": "طلبات العملاء",
+   "short_name": "الطلبات",
+   "url": "./index.html?go=requests",
+   "icons": [
+    {
+     "src": "admin-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "دفعات الكتاكيت",
+   "short_name": "الكتاكيت",
+   "url": "./index.html?go=chicks",
+   "icons": [
+    {
+     "src": "admin-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "المشتريات والنواقص",
+   "short_name": "المشتريات",
+   "url": "./index.html?go=buy",
+   "icons": [
+    {
+     "src": "admin-192.png",
+     "sizes": "192x192"
+    }
+   ]
   }
  ]
 }
