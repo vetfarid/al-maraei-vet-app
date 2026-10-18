@@ -1,1 +1,61 @@
-
+{
+ "name": "Build APK",
+ "on": {
+  "push": {
+   "paths": [
+    ".github/workflows/build-apk.yml"
+   ]
+  },
+  "workflow_dispatch": {}
+ },
+ "permissions": {
+  "contents": "write"
+ },
+ "jobs": {
+  "build": {
+   "runs-on": "ubuntu-latest",
+   "steps": [
+    {
+     "uses": "actions/checkout@v4"
+    },
+    {
+     "uses": "actions/setup-java@v4",
+     "with": {
+      "distribution": "temurin",
+      "java-version": "17"
+     }
+    },
+    {
+     "uses": "gradle/actions/setup-gradle@v4",
+     "with": {
+      "gradle-version": "8.7"
+     }
+    },
+    {
+     "name": "Create Android project",
+     "run": "mkdir -p android/app/src/main/res/mipmap-xxxhdpi\n: > p.b64\necho H4sIANY41GoC/+1aX1MbORLn2Z9C64fFrgKNTYzZCpgN8ZELW4FQNiFbtXWVkmdkW0EjzUoaA3fL >> p.b64\necho 293LfZF9vsf9Jsm32daMxow9hqQ2CZu70+9loNXTavU/tTQmIlKSRQFJkmCUMh7hiSIRp2ufES1A >> p.b64\necho t9PJnoDlZ6vbejT/O6O3tzpbj9ZQa+0BkGpDFEy/9v+JhKcTJjT6Rw0BWITWQxljkkcFhqjgLCSG >> p.b64\necho SbFeu6k5smMWJKY6ISHN34mJIpThGTXr2TDQEsbpMLpAjzoZJaJjknLTl2LMJk6IRWmWo2i1MIuY >> p.b64\necho CStsqzOngOcm1JRmsJhRpUFSX0YUtZepJ6AzWm/jVi72pqzpy8RqoEuKaZmqkPZhGJQbMc7MNfqB >> p.b64\necho zMh5LgyfHw6GRy9P3rR3llT66FduwKp/qv9JKf+1CoOYMBEc5MRjItiYaoOvYv4F879dzf/tznbb >> p.b64\necho 5/9DYO97cG6RHb06ZEYdURHKiIlJr56a8eZ39e/3a3uxiwUE7EI/dmHTq0+NSR4HgQ6nNCZ6Xjgg >> p.b64\necho pSCkLgJFdeBo9f0s4vdSTfVmQlXMtJ0TueHHtpz06oWAWwZ8dHJ2ODg5PKujwIkoFYzbIuLEcDKi >> p.b64\necho vFd/oo2CJdi4fmMl1yuMLLQLfhKzJCZJwMI3nKQClqGqrDpNEqmMHhiQbFS6QhrhXF4+JeFFmtzF >> p.b64\necho YsBEsMInc6nmmtPgzFLxMTFUMcLxCzaZGnwiD0K7uqdEObPl6wbiDCrKnFIWn9sPJDFx4PjqKxnp >> p.b64\necho lV0MjZb1LPOEWY3uT4mYUN2rS8WoMJnBf9GholQM2d/pLxf0eiSJip6zKKJitaRLJiJ5OZRjcySS >> p.b64\necho 1BxDWQYvR28h7wZUg5TSArNFMmFgrs0x42CSxbG5Ee4Mm/xlnPPg44Ojk3nULAiB4KETqa7vF1Nw >> p.b64\necho 4RcHr076zw8HFWF7wR3q7gWFs1zMBqWghXwKioTa/wrr/1vYsAKbwvk2HMA2HJTjCluGz1b/O93u >> p.b64\necho 1mL932p1uzu+/j9I/wcli0woWmy6dms1FtsqgUqdIC7cv7s8CNUiy5ej7FEZFtTgV4pV6FLjp6mA >> p.b64\necho w0Zl5JKOLpjB54SntA+ldQRa3sX0mo76UyVj2uds1ey3bFBvsoZuQH9OIfPu4RxSY2D30PewnDN6 >> p.b64\necho +YHhQqFako4g9VHIidaonEiIXoHFIo3mhLz5TBSbQe1B2tbcEI2ZIBwNsx0NDc8OBmeoh7KtV8Pe >> p.b64\necho C/4aEwWzT5iZpiPMZED4Zu7MTRjctLld310Q7DREoPDiwILJ98BrP/1tH4VTKTVVsBLL+uQltAsw >> p.b64\necho H3UvSkND2E7QzB4NoPFWFAQ1cs+iUbPcT6ewreM5y6i5Ox+Cpvl1tlM0mlhDTw8LTzVsf33JpWq0 >> p.b64\necho rp49a+90n27vlF4B3cEMAlbhVtMwU6ZLDNo24llIZqPAXxoseRlpkAOj2B4mHK1RlmM1sk38MFQs >> p.b64\necho MYeCjDiNGnb3XOb6i4yHRirIqHu5iCEjou/isaoA10IUNUrrdJSyZat+KeBibyQlp0QgPZUpjwrO >> p.b64\necho V4q/kMT2eo0iImYbqJoqSC1PZgHRgVIwnbKGA1FlmxVwQTsFttSyPZfarOJjY9SYom/Anynn6Ntv >> p.b64\necho 0RTbxHgNId2oVyO83mwiRU2qBBoTrmlVoFHXK1TOXAAF3xQJl9k1r1uN/IEP+mf2hHZ+dPh6A6XN >> p.b64\necho FcreINjHwylqHF6FNDs1IrrKQDcVitPZOnxR7C3rzcpIKJe4IhYWaH8oGqQYTuXlMzj89vMUL4fB >> p.b64\necho 6lIw2kAl/lOoMrFGyarVW5e6ylE4tlmUEigCAxpSNqPZLI1ssGro4vUezPuHXfxMKgjnlJtGgsOs >> p.b64\necho 8jh/NzdQ+xO8u6igXcHuSp774/SzxAiHJLYJmO0Nbuzmo6p1YSRnIehmYf6fN1D+h95wuYEiKFll >> p.b64\necho I1jnAiPq9VDbpmvF0Yv2usPtS0GMK5GFE6I0dcpl+mSKLHntLi/cIAo2X1Kl2ISWVp6t+naGkpB7 >> p.b64\necho rJlnkzOlPf2dggQNFX3ZVNZJIRF/lZapAcUr227cf7dzZeoWCi7I2/1C10Ur+397ap9ZB+kgP0br >> p.b64\necho T7oC+tD9b7vbWbr/6VqS7/+/ovsf5RoC7Y6zeVwgd2wuLln23/36/p/v//XuP+9+fffb+3/vufCx >> p.b64\necho 592SgDWPrwZF/n+pbz8flf/t9lL+t7uPtn3+f13ff4oigda/w9t4az37bHOdtzV/9lcMj0/N/zzz >> p.b64\necho MfSH0HwYRvUD5n9rp/L9d6fjv/88CKSauKqP385ioia6t/ljfLU1qc1v76Q4U0RoBu0yHfTtHVbP >> p.b64\necho nk18xv8v5b92915fogX4UP53WluV33+0fP4/4P5/TASZ0Nge9PNGQNFEQsbb737lH0RMpJxw2mje >> p.b64\necho /iaDzKjow3uK8BI5D6LTTPapVGY+aA+wEU2oiOCQYY/ekqe2u/icCtg5lJTmVMm3NDTYnkzsfflx >> p.b64\necho diNerzER8jSiaP0xdDDrvox5eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4 >> p.b64\necho ePwX4XenLbBnAFAAAA== >> p.b64\nbase64 -d p.b64 | tar xz\nU=https://vetfarid.github.io/al-maraei-vet-app\nI=android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png\ncurl -fsSL \"$U/admin-192.png\" -o $I || curl -fsSL \"$U/icon-192.png\" -o $I"
+    },
+    {
+     "name": "Build APK",
+     "working-directory": "android",
+     "run": "yes | \"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager\" --licenses > /dev/null || true\ngradle assembleDebug --no-daemon\nmv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/maraei.apk"
+    },
+    {
+     "uses": "actions/upload-artifact@v4",
+     "with": {
+      "name": "maraei-apk",
+      "path": "android/app/build/outputs/apk/debug/maraei.apk"
+     }
+    },
+    {
+     "uses": "softprops/action-gh-release@v2",
+     "with": {
+      "tag_name": "apk-${{ github.run_number }}",
+      "name": "Maraei APK ${{ github.run_number }}",
+      "files": "android/app/build/outputs/apk/debug/maraei.apk"
+     }
+    }
+   ]
+  }
+ }
+}
