@@ -131,8 +131,7 @@ if(du<0)st='<span class="pill warn">متأخر</span>';
 else if(du<=2)st='<span class="pill warn">قرب الموعد</span>';
 else st='<span class="pill ok">بعد '+du+' يوم</span>';
 }
-return '<div class="vrow"><div><b>'+esc(v.label)+'</b><div class="muted" style="font-size:12px">تاريخ الجرعة: '+esc(v.date||'—')+(v.nextDate?' · القادمة: '+esc(v.nextDate):'')+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+st+'<div style="display:flex;gap:4px"><button type="button" class="btn alt sm" onclick="sendVaxMsg(\''+p.id+'\',\''+v.id+'\')">واتساب</button><button type="button" class="btn alt sm" onclick="delVax(\''+p.id+'\',\''+v.id+'\')">حذف</button></div></div></div>';
-}).join('');
+return '<div class="vrow" style="flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:140px"><b>'+esc(v.label)+'</b><div class="muted" style="font-size:12px">تاريخ الجرعة: '+esc(v.date||'—')+(v.nextDate?' · القادمة: '+esc(v.nextDate):'<span style="color:#c0392b"> · بدون موعد قادم</span>')+(v.notes?' · '+esc(v.notes):'')+'</div></div><div style="display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:120px">'+st+'<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end"><button type="button" class="btn sm" data-p="'+p.id+'" data-v="'+v.id+'" onclick="editVaxSheet(this.dataset.p,this.dataset.v)">✏️ تعديل الموعد</button><button type="button" class="btn alt sm" data-p="'+p.id+'" data-v="'+v.id+'" onclick="sendVaxMsg(this.dataset.p,this.dataset.v)">واتساب</button><button type="button" class="btn sm" data-p="'+p.id+'" data-v="'+v.id+'" onclick="editVaxSheet(this.dataset.p,this.dataset.v)">تعديل</button><button type="button" class="btn alt sm" data-p="'+p.id+'" data-v="'+v.id+'" onclick="delVax(this.dataset.p,this.dataset.v)">حذف</button></div></div></div>'}).join('');
 }
 const optHtml=opts.map(o=>'<option value="'+o.id+'">'+esc(o.label)+'</option>').join('')+(p.kind!=='كلب'&&p.kind!=='قط'?'<option value="custom">أخرى (اكتب الاسم)</option>':'');
 const photoHtml=p.photo?'<img class="pphoto" style="width:72px;height:72px" src="'+p.photo+'" alt="">':'<div class="pphoto" style="width:72px;height:72px;display:grid;place-items:center;font-size:28px">🐾</div>';
@@ -158,6 +157,41 @@ if(sel)sel.onchange=function(){const w=$('vaxCustomWrap');if(w)w.style.display=s
 }
 function setVaxNext(days){const el=$('vaxNext');if(!el)return;const d=new Date();d.setDate(d.getDate()+days);el.value=d.toISOString().slice(0,10)}
 function addVax(e,pid){e.preventDefault();const p=db.patients.find(x=>x.id===pid);if(!p)return;const f=data(e.target);const opts=vaxOpts(p.kind);let label='';if(f.vid==='custom')label=(f.custom||'').trim()||'تطعيم';else{const o=opts.find(x=>x.id===f.vid);label=o?o.label:f.vid}p.vaccines=p.vaccines||[];p.vaccines.push({id:uid(),vid:f.vid,label,date:f.date,nextDate:f.nextDate||'',notes:f.notes||''});closeSheet();save();toast('✔ اتحفظ التطعيم');patientSheet(pid)}
+
+function editVaxSheet(pid,vid){
+const p=db.patients.find(x=>x.id===pid);if(!p)return;
+const v=(p.vaccines||[]).find(x=>x.id===vid);if(!v)return;
+const opts=vaxOpts(p.kind);
+let optHtml=opts.map(o=>'<option value="'+o.id+'" '+(v.vid===o.id?'selected':'')+'>'+esc(o.label)+'</option>').join('');
+if(!opts.some(o=>o.id===v.vid)&&v.vid){optHtml='<option value="'+esc(v.vid)+'" selected>'+esc(v.label)+'</option>'+optHtml}
+optHtml+='<option value="custom"'+(v.vid==='custom'?' selected':'')+'>أخرى (اكتب الاسم)</option>';
+openSheet(
+'<h3>تعديل تطعيم — '+esc(v.label)+'</h3>'+
+'<form onsubmit="saveVaxEdit(event,\''+pid+'\',\''+vid+'\')">'+
+'<div class="field"><label>نوع التطعيم</label><select name="vid" id="vaxSelEdit">'+optHtml+'</select></div>'+
+'<div class="field" id="vaxCustomWrapEdit" style="display:'+(v.vid==='custom'||!opts.some(o=>o.id===v.vid)?'block':'none')+'"><label>اسم التطعيم</label><input name="custom" value="'+esc(v.vid==='custom'||!opts.some(o=>o.id===v.vid)?v.label:'')+'" placeholder="اسم التطعيم"></div>'+
+'<div class="grid"><div class="field"><label>تاريخ الجرعة *</label><input name="date" type="date" required value="'+esc(v.date||'')+'"></div>'+
+'<div class="field"><label>موعد الجرعة القادمة</label><input name="nextDate" type="date" id="vaxNext" value="'+esc(v.nextDate||'')+'"></div></div>'+
+'<div class="actions" style="margin:0 0 8px;flex-wrap:wrap"><button type="button" class="btn alt sm" onclick="setVaxNext(14)">+ أسبوعين</button><button type="button" class="btn alt sm" onclick="setVaxNext(30)">+ شهر</button><button type="button" class="btn alt sm" onclick="setVaxNext(90)">+ 3 شهور</button><button type="button" class="btn alt sm" onclick="setVaxNext(365)">+ سنة</button></div>'+
+'<div class="field"><label>ملاحظات</label><input name="notes" value="'+esc(v.notes||'')+'" placeholder="اختياري"></div>'+
+'<button class="btn">حفظ التعديلات</button> <button class="btn alt" type="button" onclick="patientSheet(\''+pid+'\')">رجوع</button>'+
+'</form>'
+);
+const sel=$('vaxSelEdit');
+if(sel)sel.onchange=function(){const w=$('vaxCustomWrapEdit');if(w)w.style.display=sel.value==='custom'?'block':'none'};
+}
+function saveVaxEdit(e,pid,vid){
+e.preventDefault();
+const p=db.patients.find(x=>x.id===pid);if(!p)return;
+const v=(p.vaccines||[]).find(x=>x.id===vid);if(!v)return;
+const f=data(e.target);
+const opts=vaxOpts(p.kind);
+let label='';
+if(f.vid==='custom'){label=(f.custom||'').trim()||v.label||'تطعيم'}
+else{const o=opts.find(x=>x.id===f.vid);label=o?o.label:(f.custom||v.label||f.vid)}
+v.vid=f.vid;v.label=label;v.date=f.date;v.nextDate=f.nextDate||'';v.notes=f.notes||'';
+save();toast('✔ اتحفظ تعديل التطعيم');patientSheet(pid);
+}
 function delVax(pid,vid){if(!confirm('حذف سجل التطعيم؟'))return;const p=db.patients.find(x=>x.id===pid);if(!p)return;p.vaccines=(p.vaccines||[]).filter(v=>v.id!==vid);save();patientSheet(pid)}
 function setPatientPhoto(inp,pid){const f=inp.files&&inp.files[0];if(!f)return;imgFit(f).then(u=>{if(!u){toast('تعذر قراءة الصورة');return}const p=db.patients.find(x=>x.id===pid);if(!p)return;p.photo=u;save();toast('✔ اتحفظت الصورة');patientSheet(pid)})}
 function vaxMsg(p,v){return ['السلام عليكم'+(p.owner?' أ/ '+p.owner:''),'تذكير من عيادة المراعي البيطرية — د. فريد ملاك','',`بخصوص: ${p.name||'الحيوان'}${p.kind?' ('+p.kind+')':''}`,`التطعيم: ${v.label||''}`,v.date?`تاريخ آخر جرعة: ${v.date}`:'',v.nextDate?`موعد الجرعة القادمة: ${v.nextDate}`:'','','يرجى الالتزام بالموعد لصحة حيوانكم.','للاستفسار أو إعادة الجدولة تواصلوا معنا.'].filter((x,i,a)=>x!==''||(a[i-1]&&a[i-1]!=='')).join('\n')}
@@ -238,7 +272,7 @@ async function resetPage(){if(!window.pubSave){alert('سجّل دخول من ت�
 const nd=s=>String(s||'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/\D/g,'');
 function normPhone(s){let d=nd(s);if(d.startsWith('0020'))d=d.slice(4);else if(d.startsWith('20')&&d.length===12)d=d.slice(2);if(d.length===10)d='0'+d;return d}
 function fillC(f,n,t){if(!f)return;let nm=f.querySelector('[name=owner]')||f.querySelector('[name=name]'),ph=f.querySelector('[name=phone]');if(nm&&n)nm.value=n;if(ph&&t)ph.value=normPhone(t)}
-const APPV='24-10-2026 · 12';
+const APPV='24-10-2026 · 13';
 function aboutFill(){let e=$('aboutInfo');if(!e)return;let ua=navigator.userAgent,cm=ua.match(/Chrome\/(\d+)/),wv=/; wv\)/.test(ua)||!!window.AndroidContacts,sam=/SamsungBrowser/.test(ua),mode=wv?'تطبيق APK':(matchMedia('(display-mode: standalone)').matches?'تطبيق مثبت من Chrome':'المتصفح'),cs=window.AndroidContacts&&window.AndroidContacts.pick?'مدعومة (APK)':(/; wv\)/.test(ua)?'غير مدعومة — الـ APK ده قديم، محتاج بناء جديد':(navigator.contacts&&navigator.contacts.select?'مدعومة (Chrome)':'غير مدعومة'));e.innerHTML='الإصدار: <b>'+APPV+'</b><br>بيفتح من: <b>'+mode+'</b><br>المتصفح: <b>'+(sam?'Samsung Internet':cm?'Chrome '+cm[1]:'غير معروف')+'</b><br>جهات الاتصال: <b>'+cs+'</b><br>اتصال آمن: <b>'+(window.isSecureContext?'نعم':'لا')+'</b>'}
 function toast(m){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;left:12px;right:12px;bottom:78px;background:#222;color:#fff;padding:11px 14px;border-radius:12px;z-index:40;text-align:center;font-size:14px;line-height:1.7';document.body.appendChild(t)}t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none'},6000)}
 async function pickContact(b){let f=b.closest('form');try{if(window.AndroidContacts&&window.AndroidContacts.pick){window._cf=f;toast('جاري فتح جهات الاتصال…');window.AndroidContacts.pick();return}if(navigator.contacts&&navigator.contacts.select){toast('جاري فتح جهات الاتصال…');let r=await navigator.contacts.select(['name','tel'],{multiple:false});if(r&&r.length){fillC(f,r[0].name&&r[0].name[0],r[0].tel&&r[0].tel[0]);toast('اتضاف: '+((r[0].name&&r[0].name[0])||''))}}else toast('الميزة دي مش مدعومة هنا. افتح الموقع من Chrome، أو حدّث التطبيق (APK) بالنسخة الجديدة.')}catch(e){toast((/; wv\)/.test(navigator.userAgent)?'النسخة دي من الـ APK قديمة ومفيهاش دعم جهات الاتصال. ابنِ الـ APK الجديد وثبّته، أو استخدم التطبيق المثبت من Chrome.':'تعذر فتح جهات الاتصال: '+(e&&e.message?e.message:e)))}}
