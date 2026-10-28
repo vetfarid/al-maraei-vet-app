@@ -33,6 +33,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
+      - name: Prepare launcher icon
+        run: |
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          cp admin-192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
       - name: Accept SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - name: Build debug
