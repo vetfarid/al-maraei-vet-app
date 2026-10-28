@@ -1,0 +1,25 @@
+rules_version = '2';
+// قواعد Firebase Storage — غير مستخدمة حاليًا (التطبيق يخزّن الصور المضغوطة في Firestore).
+// فعّلها فقط لو رقّيت المشروع لخطة Blaze وفعّلت Storage. الدكتور = نفس مستند admins/{uid}.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isDoctor() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+    function okImage() {
+      return request.resource.size < 1 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    match /public/{file} {
+      allow read: if true;
+      allow write: if isDoctor() && okImage();
+    }
+    match /clinic/{allPaths=**} {
+      allow read: if isDoctor();
+      allow write: if isDoctor() && okImage();
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

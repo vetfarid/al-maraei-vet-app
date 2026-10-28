@@ -17,29 +17,61 @@
 <section class="panel"><h2>طلب حجز أو زيارة</h2><form id="booking"><div class="grid"><div class="field"><label>اسمك *</label><input name="name" required autocomplete="name"></div><div class="field"><label>رقم الهاتف *</label><input name="phone" id="ph" type="tel" required autocomplete="tel" inputmode="numeric" maxlength="11" pattern="01[0125][0-9]{8}" placeholder="01xxxxxxxxx (11 رقم)" title="رقم موبايل مصري من 11 رقم"></div></div><div class="grid"><div class="field"><label>نوع الحيوان</label><select name="animalType"><option>قط</option><option>كلب</option><option>أرنب</option><option>طيور</option><option>أبقار</option><option>جاموس</option><option>أغنام</option><option>ماعز</option><option>خيول</option><option>أخرى</option></select></div><div class="field"><label>اسم الحيوان (اختياري)</label><input name="animalName"></div></div><div class="field"><label>نوع الطلب *</label><select name="type" required><option>حجز كشف بالعيادة</option><option>متابعة</option><option>تطعيم</option><option>زيارة منزلية</option><option>زيارة مزرعة</option><option>استفسار</option></select></div><div class="grid"><div class="field"><label>التاريخ المفضل</label><input name="date" type="date" id="date"></div><div class="field"><label>الوقت المفضل</label><input name="time" type="time"></div></div><div class="field"><label>العنوان (للزيارات المنزلية/المزرعة)</label><input name="address" placeholder="القرية أو العنوان بالتفصيل"></div><div class="field"><label>وصف الحالة أو تفاصيل الطلب *</label><textarea name="details" required placeholder="اكتب الأعراض أو سبب الزيارة باختصار"></textarea></div><button class="btn">إرسال الطلب</button></form><div id="success" class="success"></div></section>
 <div class="warning"><b>مهم:</b> في الحالات الطارئة، اتصل بالعيادة مباشرة ولا تعتمد على نموذج الحجز.</div><section class="panel"><h2>قبل إرسال الطلب</h2><p class="note">إرسال الطلب لا يعني تأكيد الموعد. ستحتاج العيادة إلى تأكيد الوقت معك. لا تكتب معلومات شخصية غير لازمة في وصف الحالة.</p></section><div class="foot">عيادة المراعي البيطرية · دكتور فريد ملاك</div></div>
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getFirestore,collection,addDoc,serverTimestamp,doc,getDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {firebaseConfig} from "./firebase-config.js";
-const $=id=>document.getElementById(id);$('date').min=new Date().toLocaleDateString('en-CA');
-let db=null;try{if(!firebaseConfig.apiKey.startsWith('PASTE'))db=getFirestore(initializeApp(firebaseConfig),firebaseConfig.databaseId)}catch(e){}
-const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),MK='maraei_mine',mine=()=>{try{return JSON.parse(localStorage.getItem(MK)||'[]')}catch(e){return[]}},cards={};
-function paint(){const l=mine().filter(m=>cards[m.id]);$('mine').style.display=l.length?'block':'none';$('mineList').innerHTML=l.map(m=>{const x=cards[m.id];return `<div class="req"><div class="rt"><b>${E(x.type||'طلب')}</b><span class="st">${E(x.status||'جديد')}</span></div><small>${E(m.d)}</small>${x.reply?`<div class="rep"><b>رد العيادة:</b><br>${E(x.reply).replace(/\n/g,'<br>')}</div>`:'<div class="wait">في انتظار رد العيادة…</div>'}</div>`}).join('')}
-function watch(id){if(db)onSnapshot(doc(db,'requests',id),sn=>{if(sn.exists())cards[id]=sn.data();else delete cards[id];paint()},()=>{})}
-
+const FB="https://www.gstatic.com/firebasejs/10.12.2/",$=id=>document.getElementById(id);$('date').min=new Date().toLocaleDateString('en-CA');
+const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let F=null,db=null,auth=null,uid=null,busy=false;
+const PK='maraei_pending_req',IMG_OK=/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/;
+const say=(h,ok)=>{const s=$('success');s.style.display='block';s.innerHTML=h};
+async function init(){
+  try{const [app,au,st]=await Promise.all([import(FB+'firebase-app.js'),import(FB+'firebase-auth.js'),import(FB+'firebase-firestore.js')]);
+    const a=app.initializeApp(firebaseConfig);auth=au.getAuth(a);db=st.getFirestore(a,firebaseConfig.databaseId);F={...st,...au};
+  }catch(e){say('تعذر تحميل الخدمة (لا يوجد اتصال بالإنترنت). اتصل بالعيادة مباشرة أو حاول لاحقًا.');return}
+  loadPage();
+  try{await ensureUser();watchMine()}catch(e){}
+}
+async function ensureUser(){if(uid)return uid;await new Promise(res=>{const u=F.onAuthStateChanged(auth,x=>{u();res(x)})});if(!auth.currentUser)await F.signInAnonymously(auth);uid=auth.currentUser.uid;return uid}
+// ----- طلباتي: استعلام مقيّد بصاحب الطلب فقط (القواعد ترفض أي طلب غيره) -----
+let cards=[];
+function paint(){$('mine').style.display=cards.length?'block':'none';$('mineList').innerHTML=cards.map(x=>`<div class="req"><div class="rt"><b>${E(x.type||'طلب')}</b><span class="st">${E(x.status||'جديد')}</span></div><small>${E(x.d||'')}</small>${x.reply?`<div class="rep"><b>رد العيادة:</b><br>${E(x.reply).replace(/\n/g,'<br>')}</div>`:'<div class="wait">في انتظار رد العيادة…</div>'}</div>`).join('')}
+function watchMine(){F.onSnapshot(F.query(F.collection(db,'requests'),F.where('ownerUid','==',uid)),sn=>{cards=sn.docs.map(d=>{const x=d.data(),t=x.createdAt&&x.createdAt.toMillis?x.createdAt.toMillis():Date.now();return {...x,t,d:new Date(t).toLocaleDateString('ar-EG-u-nu-latn')}}).sort((a,b)=>b.t-a.t).slice(0,20);paint()},()=>{})}
+// ----- المعرض -----
 const DEF_IMG=document.querySelector('#gslides img')?.src||'';
 let gImgs=[],gIdx=0,gTimer=null,gTouchX=0;
-function gShow(i){if(!gImgs.length)return;gIdx=(i+gImgs.length)%gImgs.length;const slides=$('gslides').querySelectorAll('img');slides.forEach((im,k)=>im.classList.toggle('on',k===gIdx));$('gdots').querySelectorAll('button').forEach((b,k)=>b.classList.toggle('on',k===gIdx));gRestart()}
+function gShow(i){if(!gImgs.length)return;gIdx=(i+gImgs.length)%gImgs.length;$('gslides').querySelectorAll('img').forEach((im,k)=>im.classList.toggle('on',k===gIdx));$('gdots').querySelectorAll('button').forEach((b,k)=>b.classList.toggle('on',k===gIdx));gRestart()}
 function gRestart(){clearInterval(gTimer);if(gImgs.length>1)gTimer=setInterval(()=>gShow(gIdx+1),3500)}
-function gBuild(list){gImgs=(list||[]).filter(Boolean);if(!gImgs.length)gImgs=[DEF_IMG];const box=$('gslides'),dots=$('gdots'),gal=$('gallery');box.innerHTML=gImgs.map((s,i)=>'<img src="'+s+'" alt="صورة العيادة" class="'+(i===0?'on':'')+'" decoding="async">').join('');dots.innerHTML=gImgs.map((_,i)=>'<button type="button" aria-label="صورة '+(i+1)+'" class="'+(i===0?'on':'')+'"></button>').join('');gal.classList.toggle('one',gImgs.length<2);gIdx=0;dots.querySelectorAll('button').forEach((b,i)=>b.onclick=()=>gShow(i));gRestart()}
+function gBuild(list){gImgs=(list||[]).filter(u=>typeof u==='string'&&IMG_OK.test(u));if(!gImgs.length)gImgs=[DEF_IMG];const box=$('gslides'),dots=$('gdots');box.textContent='';dots.textContent='';
+  gImgs.forEach((src,i)=>{const im=document.createElement('img');im.src=src;im.alt='صورة العيادة';im.decoding='async';if(i===0)im.className='on';box.appendChild(im);const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','صورة '+(i+1));if(i===0)b.className='on';b.onclick=()=>gShow(i);dots.appendChild(b)});
+  $('gallery').classList.toggle('one',gImgs.length<2);gIdx=0;gRestart()}
 $('gprev').onclick=()=>gShow(gIdx-1);$('gnext').onclick=()=>gShow(gIdx+1);
-(function(){const gal=$('gallery');if(!gal)return;gal.addEventListener('touchstart',e=>{gTouchX=e.changedTouches[0].screenX},{passive:true});gal.addEventListener('touchend',e=>{const dx=e.changedTouches[0].screenX-gTouchX;if(Math.abs(dx)>40)gShow(gIdx+(dx>0?-1:1))},{passive:true})})();
-if(db){mine().forEach(m=>watch(m.id));getDoc(doc(db,'public','page')).then(sn=>{if(!sn.exists())return;const d=sn.data();if(d.title)$('wT').textContent=d.title;if(d.welcome)$('wM').textContent=d.welcome;if(d.sub)$('wS').textContent=d.sub;const imgs=Array.isArray(d.images)&&d.images.length?d.images:(d.logo?[d.logo]:[]);if(imgs.length)gBuild(imgs);if(d.pageUrl&&/^https?:\/\//i.test(d.pageUrl)){const a=$('wLink');a.href=d.pageUrl;a.textContent='🔗 '+(d.pageLabel||'صفحة العيادة');a.style.display='block'}}).catch(()=>{})}
+$('gallery').addEventListener('touchstart',e=>{gTouchX=e.changedTouches[0].screenX},{passive:true});$('gallery').addEventListener('touchend',e=>{const dx=e.changedTouches[0].screenX-gTouchX;if(Math.abs(dx)>40)gShow(gIdx+(dx>0?-1:1))},{passive:true});
+async function loadPage(){try{const sn=await F.getDoc(F.doc(db,'public','page'));if(!sn.exists())return;const d=sn.data();if(d.title)$('wT').textContent=d.title;if(d.welcome)$('wM').textContent=d.welcome;if(d.sub)$('wS').textContent=d.sub;
+  let imgs=[];if(Array.isArray(d.imageIds)&&d.imageIds.length){for(const id of d.imageIds.slice(0,6)){if(!/^[A-Za-z0-9_-]{1,80}$/.test(id))continue;try{const im=await F.getDoc(F.doc(db,'publicImages',id));if(im.exists())imgs.push(im.data().data)}catch(e){}}}else imgs=Array.isArray(d.images)&&d.images.length?d.images:(d.logo?[d.logo]:[]);
+  if(imgs.length)gBuild(imgs);
+  if(d.pageUrl&&/^https?:\/\/[^\s<>"']+$/i.test(d.pageUrl)){const a=$('wLink');a.href=d.pageUrl;a.textContent='🔗 '+(d.pageLabel||'صفحة العيادة');a.style.display='block'}}catch(e){}}
+// ----- نموذج الحجز -----
 const nd=s=>String(s||'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/\D/g,''),chkPh=()=>{const p=$('ph');p.value=nd(p.value).slice(0,11);p.setCustomValidity(/^01[0125]\d{8}$/.test(p.value)?'':'اكتب رقم موبايل مصري من 11 رقم يبدأ بـ 010 أو 011 أو 012 أو 015')};$('ph').addEventListener('input',chkPh);chkPh();
-$('booking').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,b=f.querySelector('button'),s=$('success');s.style.display='block';
-if(!db){s.innerHTML='الخدمة غير مفعلة بعد. من فضلك اتصل بالعيادة.';return}
-const x=Object.fromEntries(new FormData(f).entries());x.status='جديد';x.createdAt=serverTimestamp();b.disabled=true;b.textContent='جاري الإرسال...';
-try{const rf=await addDoc(collection(db,'requests'),x);const ml=mine();ml.unshift({id:rf.id,d:new Date().toLocaleDateString('ar-EG-u-nu-latn')});localStorage.setItem(MK,JSON.stringify(ml.slice(0,20)));watch(rf.id);if(firebaseConfig.ntfyTopic)fetch('https://ntfy.sh/'+firebaseConfig.ntfyTopic,{method:'POST',headers:{Title:'New booking request',Click:'https://vetfarid.github.io/al-maraei-vet-app/'},body:'طلب جديد من أحد العملاء. افتح لوحة العيادة'}).catch(()=>{});s.innerHTML='<b>تم إرسال طلبك للعيادة.</b><br>إرسال الطلب لا يعني تأكيد الموعد، وسيتم التواصل معك على رقم هاتفك لتأكيده.';f.reset();$('date').min=new Date().toLocaleDateString('en-CA')}
-catch(err){s.innerHTML='تعذر إرسال الطلب. تأكد من الإنترنت أو اتصل بالعيادة مباشرة.'}
-b.disabled=false;b.textContent='إرسال الطلب';s.scrollIntoView({behavior:'smooth',block:'center'})});
+const clip=(v,n)=>String(v||'').trim().slice(0,n);
+$('booking').addEventListener('submit',async e=>{e.preventDefault();if(busy)return;const f=e.target,b=f.querySelector('button');
+  if(!db){say('الخدمة غير متاحة الآن'+(navigator.onLine?'':' (لا يوجد اتصال بالإنترنت)')+'. من فضلك اتصل بالعيادة.');return}
+  busy=true;b.disabled=true;b.textContent='جاري الإرسال...';
+  // نفس الطلب = نفس المعرّف: لو فشل الإرسال وأعاد العميل الضغط لا يتكرر الطلب
+  let pend=null;try{pend=JSON.parse(localStorage.getItem(PK)||'null')}catch(x){}
+  const fd=Object.fromEntries(new FormData(f).entries());
+  const sig=JSON.stringify([fd.name,fd.phone,fd.type,fd.details,fd.date,fd.time]);
+  try{
+    await ensureUser();
+    if(!pend||pend.sig!==sig)pend={id:crypto.randomUUID(),sig};localStorage.setItem(PK,JSON.stringify(pend));
+    const ref=F.doc(db,'requests',pend.id);
+    const x={name:clip(fd.name,100),phone:nd(fd.phone).slice(0,11),animalType:clip(fd.animalType,30),animalName:clip(fd.animalName,100),type:clip(fd.type,40),date:clip(fd.date,10),time:clip(fd.time,5),address:clip(fd.address,300),details:clip(fd.details,1500),status:'جديد',createdAt:F.serverTimestamp(),ownerUid:uid};
+    try{await F.setDoc(ref,x)}catch(err){ // لو الطلب اتسجل فعلًا قبل انقطاع الرد نعتبره نجاح
+      let exists=false;try{exists=(await F.getDoc(ref)).exists()}catch(z){}
+      if(!exists)throw err}
+    localStorage.removeItem(PK);
+    if(firebaseConfig.ntfyTopic)fetch('https://ntfy.sh/'+firebaseConfig.ntfyTopic,{method:'POST',headers:{Title:'New booking request',Click:'https://vetfarid.github.io/al-maraei-vet-app/'},body:'طلب جديد من أحد العملاء. افتح لوحة العيادة'}).catch(()=>{});
+    say('<b>تم إرسال طلبك للعيادة.</b><br>إرسال الطلب لا يعني تأكيد الموعد، وسيتم التواصل معك على رقم هاتفك لتأكيده.');f.reset();$('date').min=new Date().toLocaleDateString('en-CA');chkPh()
+  }catch(err){say(navigator.onLine?'تعذر إرسال الطلب. حاول مرة أخرى أو اتصل بالعيادة مباشرة. (بياناتك لم تُفقد في الصفحة)':'لا يوجد اتصال بالإنترنت. بياناتك ما زالت في النموذج — اضغط إرسال عند عودة الاتصال أو اتصل بالعيادة.')}
+  busy=false;b.disabled=false;b.textContent='إرسال الطلب';$('success').scrollIntoView({behavior:'smooth',block:'center'})});
+init();
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>
